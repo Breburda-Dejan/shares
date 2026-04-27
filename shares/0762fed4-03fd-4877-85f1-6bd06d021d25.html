@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ride — Zivildienst — Monday, April 27, 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#121212;--bg2:#1a1a1a;--bg3:#222;--bg4:#2a2a2a;--text:#e8e0d8;--muted:#8a8078;--accent:#c4703f;--accent-dim:rgba(196,112,63,.15);--border:#2a2826;--radius:8px;--font:'DM Sans',system-ui,sans-serif;
+--green:#3d8c5c;--red:#8c3d3d;--status-done:#3d8c5c;--status-canceled:#8c3d3d;--status-not-started:#b8a070;--status-in-progress:#c4703f;--status-sick:#7a5fbf}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh;display:flex;flex-direction:column}
+.share-topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.share-topbar h1{font-size:18px;font-weight:600;flex:1}.share-topbar .badge{background:var(--accent);color:#fff;font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600}
+.share-topbar .meta{font-size:12px;color:var(--muted)}
+.share-content{flex:1;overflow:auto;padding:0}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin:12px}
+.card h2{font-size:15px;font-weight:600;margin-bottom:12px;color:var(--accent)}
+.kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px}
+.kv:last-child{border-bottom:none}.kv .k{color:var(--muted)}.kv .v{font-weight:500}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;flex-shrink:0}
+/* Calendar snapshot styles */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);flex:1}
+.cal-dow{text-align:center;padding:8px 4px;font-size:12px;font-weight:600;color:var(--muted);background:var(--bg2)}
+.cal-cell{background:var(--bg2);padding:4px;min-height:90px;cursor:default;position:relative;overflow:hidden}
+.cal-cell.other{opacity:.4}.cal-cell.today{background:var(--accent-dim)}
+.cal-cell .day-num{font-size:12px;font-weight:600;margin-bottom:2px;color:var(--muted)}
+.cal-cell .day-num .ct{font-size:10px;background:var(--accent-dim);color:var(--accent);border-radius:999px;padding:0 4px;margin-left:4px}
+.cal-ev{font-size:11px;padding:2px 4px;margin:1px 0;border-radius:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;transition:background .15s}
+.cal-ev:hover{filter:brightness(1.3)}
+.s-done{background:var(--status-done)}.s-canceled{background:var(--status-canceled)}.s-not-started{background:var(--status-not-started)}.s-in-progress{background:var(--status-in-progress)}.s-sick{background:var(--status-sick)}
+.more-pill{font-size:10px;color:var(--muted);padding:1px 4px;cursor:pointer}.more-pill:hover{color:var(--accent)}
+/* Event detail overlay */
+.ev-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:1000;justify-content:center;align-items:center}
+.ev-overlay.open{display:flex}.ev-detail{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:500px;width:90%;max-height:80vh;overflow:auto}
+.ev-detail h3{font-size:18px;margin-bottom:12px}.ev-detail .close{float:right;cursor:pointer;font-size:20px;color:var(--muted);background:none;border:none}
+.ev-detail .close:hover{color:var(--text)}
+/* Month header in multi-month view */
+.month-section{margin:16px 12px}.month-section h2{font-size:16px;margin-bottom:8px;color:var(--accent)}
+.month-grid-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+/* Map snapshot styles */
+#share-map{width:100%;min-height:400px}
+.map-controls{background:var(--bg2);border-top:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0}
+.map-controls label{font-size:12px;color:var(--muted)}
+.map-controls input,.map-controls select{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:12px}
+.map-controls button{background:var(--accent);color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px}
+.map-controls button.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.timeline-bar{position:relative;flex:1;min-width:200px;height:32px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.timeline-fill{height:100%;background:var(--accent-dim);pointer-events:none}.timeline-thumb{position:absolute;top:0;bottom:0;width:3px;background:var(--accent)}
+.timeline-label{position:absolute;top:50%;transform:translateY(-50%);right:8px;font-size:11px;color:var(--muted);pointer-events:none}
+/* Weather */
+.wx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding:12px}
+.wx-card{background:var(--bg3);border-radius:var(--radius);padding:20px;text-align:center}
+.wx-card .temp{font-size:28px;font-weight:700}.wx-card .day{font-size:13px;color:var(--muted);margin-bottom:8px}.wx-card .cond{font-size:14px;margin:4px 0}
+.wx-card .detail{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="share-topbar">
+<h1>Ride — Zivildienst — Monday, April 27, 2026</h1>
+<span class="badge">Ride</span>
+<span class="meta">Shared April 27, 2026 at 18:42</span>
+</div>
+<div class="share-content" id="content">
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;padding:12px"><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Type</div><div style="font-size:16px;font-weight:600">Ride to Event</div></div><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Mode</div><div style="font-size:16px;font-weight:600">fahrrad</div></div><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Duration</div><div style="font-size:16px;font-weight:600">5 min</div></div><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Distance</div><div style="font-size:16px;font-weight:600">2.1 km</div></div><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Avg Speed</div><div style="font-size:16px;font-weight:600">21.3 km/h</div></div><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Max Speed</div><div style="font-size:16px;font-weight:600">50.2 km/h</div></div><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Departed</div><div style="font-size:16px;font-weight:600">13:31</div></div><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Arrived</div><div style="font-size:16px;font-weight:600">13:37</div></div><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">From</div><div style="font-size:16px;font-weight:600">home</div></div><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">To</div><div style="font-size:16px;font-weight:600">work</div></div><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Event</div><div style="font-size:16px;font-weight:600">Zivildienst</div></div><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Predicted</div><div style="font-size:16px;font-weight:600">13 min</div></div><div class="card" style="margin:0;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">vs Prediction</div><div style="font-size:16px;font-weight:600">-8 min</div></div></div><div id="share-map" style="height:calc(100vh - 350px);min-height:400px"></div>
+<div class="map-controls">
+<label>Timeline:</label>
+<div class="timeline-bar" id="tlBar"><div class="timeline-fill" id="tlFill"></div><div class="timeline-thumb" id="tlThumb" style="left:100%"></div><div class="timeline-label" id="tlLabel"></div></div>
+<button class="ghost" id="tlPlay" onclick="togglePlay()">&#9654; Play</button>
+<select id="tlSpeedSel" onchange="setSpeed(this.value)" style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px">
+<option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option><option value="5">5x</option>
+</select>
+</div>
+<script>
+(function(){var pts=[[46.6007568, 13.8444363, 1777289507, 0], [46.600807, 13.8444639, 1777289510, 0.716037793169208], [46.6012952, 13.8436305, 1777289520, 10.040569214916749], [46.6018362, 13.8427974, 1777289530, 10.509292975603184], [46.6023905, 13.8419676, 1777289540, 10.61020875765629], [46.6031549, 13.8424381, 1777289550, 11.074236399092054], [46.6033537, 13.8425418, 1777289560, 2.8178743871600336], [46.6033748, 13.8425402, 1777289570, 0.2819273837697532], [46.6033792, 13.8425328, 1777289580, 0.08971720052591939], [46.6039017, 13.8430278, 1777289590, 8.318664048893112], [46.6045906, 13.8440543, 1777289600, 13.15489704847164], [46.604886, 13.8445507, 1777289610, 6.020364846291672], [46.604889, 13.8445517, 1777289620, 0.041066449529071174], [46.6048886, 13.8445528, 1777289629, 0.011409379023755878], [46.6050818, 13.8449004, 1777289640, 4.098751958058134], [46.6055778, 13.8459637, 1777289650, 11.781982830937814], [46.6062381, 13.847514, 1777289660, 16.72125594518423], [46.606574, 13.8481941, 1777289670, 7.678370417215711], [46.606574, 13.8481941, 1777289680, 0], [46.606574, 13.8481941, 1777289686, 0], [46.6065814, 13.848207, 1777289708, 0.15405769891343185], [46.606606, 13.8482458, 1777289710, 0.48399720126040624], [46.6072462, 13.8491597, 1777289720, 11.964866513391605], [46.6081533, 13.8502232, 1777289730, 15.541624706543109], [46.6083855, 13.8504993, 1777289740, 4.000654647951825], [46.608382, 13.8505007, 1777289750, 0.04843303363278723], [46.6083797, 13.8505069, 1777289760, 0.06459014119634632], [46.6083789, 13.85051, 1777289769, 0.03035548020440348], [46.6085023, 13.8506794, 1777289774, 2.2632917677588984], [46.6088596, 13.851144, 1777289780, 6.3927599984469206], [46.6095142, 13.8521657, 1777289790, 12.806418460536243], [46.6101834, 13.8533414, 1777289800, 13.995598283971596], [46.6106593, 13.8542189, 1777289810, 10.247973295176209], [46.6114802, 13.8554592, 1777289820, 15.78707452656608], [46.6120301, 13.8562249, 1777289830, 10.153734868655407], [46.6125973, 13.8569492, 1777289840, 10.067553218685601], [46.6133977, 13.8577162, 1777289850, 12.786226397351195], [46.6142278, 13.8584251, 1777289860, 12.84150393032594]];var locs={"Hausarzt": {"lat": 46.604798, "lon": 13.828865, "radius": 10, "color": "#a51d2d"}, "Home": {"lat": 46.599481, "lon": 13.844817, "radius": 30, "color": "#26a269"}, "Work": {"lat": 46.615842, "lon": 13.857386, "radius": 200, "color": "#613583"}, "Renee's Home": {"lat": 50.252014, "lon": 7.37201, "radius": 20, "color": "#93098e"}};if(!pts.length)return;var map=L.map("share-map").setView([pts[0][0],pts[0][1]],13);L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OSM"}).addTo(map);for(var n in locs){var l=locs[n];L.circle([l.lat,l.lon],{radius:l.radius,color:l.color,fillColor:l.color,fillOpacity:.15,weight:2}).addTo(map).bindTooltip(n)}var ll=pts.map(function(p){return[p[0],p[1]]});var polyline=L.polyline(ll,{color:"#c4703f",weight:3,opacity:.7}).addTo(map);L.circleMarker(ll[0],{radius:8,color:"#3d8c5c",fillColor:"#3d8c5c",fillOpacity:1}).addTo(map).bindPopup("Start");L.circleMarker(ll[ll.length-1],{radius:8,color:"#8c3d3d",fillColor:"#8c3d3d",fillOpacity:1}).addTo(map).bindPopup("End");var liveM=L.circleMarker(ll[ll.length-1],{radius:10,color:"#c4703f",fillColor:"#c4703f",fillOpacity:1,weight:3}).addTo(map);map.fitBounds(L.latLngBounds(ll).pad(.1));var playing=false,playIdx=0,playTimer=null,speed=1;window.setSpeed=function(v){speed=parseFloat(v);if(playing){togglePlay();togglePlay()}};var tlBar=document.getElementById("tlBar"),tlThumb=document.getElementById("tlThumb"),tlFill=document.getElementById("tlFill"),tlLabel=document.getElementById("tlLabel");function setTL(frac){tlThumb.style.left=(frac*100)+"%";tlFill.style.width=(frac*100)+"%";var idx=Math.min(Math.floor(frac*pts.length),pts.length-1);if(idx<0)idx=0;if(pts[idx]){tlLabel.textContent=new Date(pts[idx][2]*1000).toLocaleTimeString()+" — "+pts[idx][3].toFixed(1)+" km/h";liveM.setLatLng([pts[idx][0],pts[idx][1]]);if(polyline)map.removeLayer(polyline);var partial=pts.slice(0,idx+1).map(function(p){return[p[0],p[1]]});if(partial.length>=2)polyline=L.polyline(partial,{color:"#c4703f",weight:3,opacity:.7}).addTo(map)}}window.togglePlay=function(){if(playing){clearInterval(playTimer);playing=false;document.getElementById("tlPlay").innerHTML="&#9654; Play";return}playing=true;document.getElementById("tlPlay").innerHTML="&#9724; Stop";if(playIdx>=pts.length-1)playIdx=0;var totalDur=pts.length>1?(pts[pts.length-1][2]-pts[0][2]):60;var playSec=totalDur/60/speed;var msPS=Math.max(16,(playSec*1000)/pts.length);var spt=1;if(msPS<16){spt=Math.ceil(16/msPS);msPS=16}playTimer=setInterval(function(){playIdx+=spt;if(playIdx>=pts.length){playIdx=pts.length-1;clearInterval(playTimer);playing=false;document.getElementById("tlPlay").innerHTML="&#9654; Play"}setTL(playIdx/pts.length)},msPS)};tlBar.addEventListener("mousedown",function(ev){function move(e){var r=tlBar.getBoundingClientRect();var f=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));playIdx=Math.floor(f*pts.length);setTL(f)}move(ev);function up(){document.removeEventListener("mousemove",move);document.removeEventListener("mouseup",up)}document.addEventListener("mousemove",move);document.addEventListener("mouseup",up)});setTL(1)})();
+</script>
+</div>
+<div class="ev-overlay" id="evOverlay" onclick="if(event.target===this)this.classList.remove('open')">
+<div class="ev-detail" id="evDetail"></div>
+</div>
+</body>
+</html>
